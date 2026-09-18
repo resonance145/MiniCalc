@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>팬메이드 포켓몬 대미지 계산기 (컴팩트 에디션 + 상성 수동입력)</title>
+<style>
+  body { font-family: 'Malgun Gothic', sans-serif; background-color: #f4f6f9; color: #333; padding: 10px; font-size: 14px; }
+  .container { max-width: 900px; margin: 0 auto; }
+  .card { background: white; padding: 15px 20px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); margin-bottom: 15px; }
+  
+  /* 헤더와 모드 선택기 배치 */
+  .card-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #3498db; padding-bottom: 5px; margin-bottom: 10px; }
+  .card-header h2 { margin: 0; font-size: 1.1em; color: #2c3e50; border: none; padding: 0; }
+  .mode-select { padding: 4px 8px; font-size: 0.9em; border-radius: 4px; border: 1px solid #3498db; background-color: #e8f4f8; font-weight: bold; color: #2980b9; cursor: pointer; }
+  
+  h2 { margin-top: 0; font-size: 1.1em; color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 5px; margin-bottom: 10px; }
+  
+  /* 입력 그룹 컴팩트화 */
+  .grid-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 10px; }
+  .input-group { display: flex; flex-direction: column; }
+  label { font-weight: bold; font-size: 0.8em; margin-bottom: 3px; color: #555; }
+  input, select { padding: 6px 8px; border: 1px solid #ccd1d9; border-radius: 4px; font-size: 0.95em; }
+  input:focus, select:focus { outline: none; border-color: #3498db; }
+  
+  /* 타입 버튼 컴팩트 그리드 (9칸 x 2줄) */
+  .type-grid { display: grid; grid-template-columns: repeat(9, 1fr); gap: 4px; margin-bottom: 10px; }
+  .type-btn {
+    padding: 6px 2px; border: 2px solid transparent; border-radius: 4px; 
+    color: white; font-weight: bold; cursor: pointer; font-size: 0.85em;
+    text-align: center; text-shadow: 1px 1px 1px rgba(0,0,0,0.6);
+    transition: transform 0.1s, opacity 0.2s, border 0.2s;
+    opacity: 0.35;
+  }
+  .type-btn.active { opacity: 1; border: 2px solid #222; transform: scale(1.03); z-index: 1; }
+  .type-label-wrapper { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 3px; }
+  
+  /* 상성 효과 표시기 */
+  .effectiveness-box {
+    background: #34495e; color: white; padding: 8px 15px; border-radius: 6px;
+    text-align: center; font-size: 1.05em; font-weight: bold; margin-bottom: 5px;
+  }
+  .effectiveness-box span { color: #f1c40f; font-size: 1.15em; }
+
+  /* 수동 상성 입력 영역 */
+  #manualModeSection { padding: 10px 0; }
+  .manual-help { font-size: 0.85em; color: #7f8c8d; margin-top: 5px; }
+
+  /* 대미지 굴리기 버튼 */
+  .roll-btn {
+    background-color: #e74c3c; color: white; border: none; padding: 12px;
+    font-size: 1.2em; font-weight: bold; border-radius: 6px; cursor: pointer;
+    width: 100%; transition: background 0.2s; margin-bottom: 15px;
+  }
+  .roll-btn:hover { background-color: #c0392b; }
+
+  /* 결과창 */
+  .result-box { text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 8px; }
+  .final-damage { font-size: 2.8em; font-weight: 900; color: #e74c3c; margin: 5px 0; }
+  .crit-text { color: #8e44ad; font-weight: bold; font-size: 1.1em; display: none; margin-bottom: 5px; }
+  .log-text { font-size: 0.9em; color: #7f8c8d; line-height: 1.4; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  
+  <div class="card">
+    <div class="card-header">
+      <h2>🎯 상성 설정</h2>
+      <select id="calcMode" class="mode-select" onchange="toggleCalcMode()">
+        <option value="auto" selected>버튼으로 타입 선택</option>
+        <option value="manual">상성 배율 직접 입력</option>
+      </select>
+    </div>
+    
+    <!-- 자동 계산 영역 (기본) -->
+    <div id="autoModeSection">
+      <div class="type-label-wrapper">
+        <label>⚔️ 공격 기술 타입 (1개 선택)</label>
+      </div>
+      <div class="type-grid" id="atkTypeGrid"></div>
+      
+      <div class="type-label-wrapper" style="margin-top: 5px;">
+        <label>🛡️ 방어 포켓몬 타입 (토글형 다중 선택)</label>
+      </div>
+      <div class="type-grid" id="defTypeGrid"></div>
+
+      <div class="effectiveness-box">
+        기술 상성 배율: <span id="effDisplay">1.0배 (보통)</span>
+      </div>
+    </div>
+
+    <!-- 수동 계산 영역 (숨김) -->
+    <div id="manualModeSection" style="display: none;">
+      <div class="input-group" style="width: 50%;">
+        <label>상성 배율 (숫자 입력)</label>
+        <input type="number" id="manualMultiplier" value="2.0" step="0.25" min="0">
+      </div>
+      <p class="manual-help">※ 예: 2 (효과 굉장함), 0.5 (효과 별로), 0 (무효), 4 (4배 약점) 등</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>⚔️ 포켓몬 스탯 & 배율 설정</h2>
+    <div class="grid-row">
+      <div class="input-group">
+        <label>공격자 힘</label>
+        <input type="number" id="force" value="5" min="1" max="5">
+      </div>
+      <div class="input-group">
+        <label>기술 위력</label>
+        <input type="number" id="power" value="80" step="10">
+      </div>
+      <div class="input-group">
+        <label>자속 보정</label>
+        <select id="stab">
+          <option value="1.5" selected>O (1.5배)</option>
+          <option value="1.0">X (1배)</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label>급소 랭크</label>
+        <select id="critRank">
+          <option value="0">0 (6.25%)</option>
+          <option value="1">1 (12.5%)</option>
+          <option value="2">2 (50%)</option>
+          <option value="3">3+ (100%)</option>
+        </select>
+      </div>
+    </div>
+    <div class="grid-row">
+      <div class="input-group">
+        <label>공격 랭크 (-6~6)</label>
+        <input type="number" id="atkRank" value="0" min="-6" max="6">
+      </div>
+      <div class="input-group">
+        <label>방어 랭크 (-6~6)</label>
+        <input type="number" id="defRank" value="0" min="-6" max="6">
+      </div>
+      <div class="input-group">
+        <label>나누기 상수</label>
+        <input type="number" id="divider" value="15" step="1">
+      </div>
+      <div class="input-group">
+        <label>난수(주사위) 범위</label>
+        <div style="display:flex; gap:5px;">
+          <input type="number" id="randMin" value="1" style="width:50%;">
+          <input type="number" id="randMax" value="4" style="width:50%;">
+        </div>
+      </div>
+    </div>
+    
+    <div class="grid-row" style="margin-top: 15px; border-top: 1px dashed #ccd1d9; padding-top: 15px;">
+      <div class="input-group">
+        <label>기타 배율 1</label>
+        <input type="number" id="extra1" value="1" step="0.1">
+      </div>
+      <div class="input-group">
+        <label>기타 배율 2</label>
+        <input type="number" id="extra2" value="1" step="0.1">
+      </div>
+      <div class="input-group">
+        <label>기타 배율 3</label>
+        <input type="number" id="extra3" value="1" step="0.1">
+      </div>
+    </div>
+  </div>
+
+  <button class="roll-btn" onclick="rollDamage()">🎲 대미지 굴리기!</button>
+
+  <div class="card result-box">
+    <div style="font-size: 0.9em; font-weight: bold; color: #2980b9;">확정된 최종 대미지</div>
+    <div class="crit-text" id="critDisplay">💥 급소에 맞았다! (대미지 1.5배)</div>
+    <p class="final-damage" id="finalDamageDisplay">0</p>
+    <div class="log-text" id="logDisplay">대미지를 굴려주세요.</div>
+  </div>
+
+</div>
+
+<script>
+  // UI 토글 함수
+  function toggleCalcMode() {
+    const mode = document.getElementById('calcMode').value;
+    if (mode === 'auto') {
+      document.getElementById('autoModeSection').style.display = 'block';
+      document.getElementById('manualModeSection').style.display = 'none';
+    } else {
+      document.getElementById('autoModeSection').style.display = 'none';
+      document.getElementById('manualModeSection').style.display = 'block';
+    }
+  }
+
+  const typeChart = {
+    "노말": { "바위": 0.5, "고스트": 0, "강철": 0.5 },
+    "불꽃": { "불꽃": 0.5, "물": 0.5, "풀": 2.0, "얼음": 2.0, "벌레": 2.0, "바위": 0.5, "드래곤": 0.5, "강철": 2.0 },
+    "물": { "불꽃": 2.0, "물": 0.5, "풀": 0.5, "땅": 2.0, "바위": 2.0, "드래곤": 0.5 },
+    "풀": { "불꽃": 0.5, "물": 0.5, "풀": 0.5, "독": 0.5, "땅": 2.0, "비행": 0.5, "벌레": 0.5, "바위": 2.0, "드래곤": 0.5, "강철": 0.5 },
+    "전기": { "물": 2.0, "전기": 0.5, "풀": 0.5, "땅": 0, "비행": 2.0, "드래곤": 0.5 },
+    "얼음": { "불꽃": 0.5, "물": 0.5, "풀": 2.0, "얼음": 0.5, "땅": 2.0, "비행": 2.0, "드래곤": 2.0, "강철": 0.5 },
+    "격투": { "노말": 2.0, "얼음": 2.0, "독": 0.5, "비행": 0.5, "에스퍼": 0.5, "벌레": 0.5, "바위": 2.0, "고스트": 0, "악": 2.0, "강철": 2.0, "페어리": 0.5 },
+    "독": { "풀": 2.0, "독": 0.5, "땅": 0.5, "바위": 0.5, "고스트": 0.5, "강철": 0, "페어리": 2.0 },
+    "땅": { "불꽃": 2.0, "전기": 2.0, "풀": 0.5, "독": 2.0, "비행": 0, "벌레": 0.5, "바위": 2.0, "강철": 2.0 },
+    "비행": { "전기": 0.5, "풀": 2.0, "격투": 2.0, "벌레": 2.0, "바위": 0.5, "강철": 0.5 },
+    "에스퍼": { "격투": 2.0, "독": 2.0, "에스퍼": 0.5, "악": 0, "강철": 0.5 },
+    "벌레": { "불꽃": 0.5, "풀": 2.0, "격투": 0.5, "독": 0.5, "비행": 0.5, "에스퍼": 2.0, "고스트": 0.5, "악": 2.0, "강철": 0.5, "페어리": 0.5 },
+    "바위": { "불꽃": 2.0, "얼음": 2.0, "격투": 0.5, "땅": 0.5, "비행": 2.0, "벌레": 2.0, "강철": 0.5 },
+    "고스트": { "노말": 0, "에스퍼": 2.0, "고스트": 2.0, "악": 0.5 },
+    "드래곤": { "드래곤": 2.0, "강철": 0.5, "페어리": 0 },
+    "악": { "격투": 0.5, "에스퍼": 2.0, "고스트": 2.0, "악": 0.5, "페어리": 0.5 },
+    "강철": { "불꽃": 0.5, "물": 0.5, "전기": 0.5, "얼음": 2.0, "바위": 2.0, "강철": 0.5, "페어리": 2.0 },
+    "페어리": { "불꽃": 0.5, "격투": 2.0, "독": 0.5, "드래곤": 2.0, "악": 2.0, "강철": 0.5 }
+  };
+
+  const typeColors = {
+    "노말": "#A8A878", "불꽃": "#F08030", "물": "#6890F0", "풀": "#78C850",
+    "전기": "#F8D030", "얼음": "#98D8D8", "격투": "#C03028", "독": "#A040A0",
+    "땅": "#E0C068", "비행": "#A890F0", "에스퍼": "#F85888", "벌레": "#A8B820",
+    "바위": "#B8A038", "고스트": "#705898", "드래곤": "#7038F8", "악": "#705848",
+    "강철": "#B8B8D0", "페어리": "#EE99AC"
+  };
+
+  let currentAtkType = "노말";
+  let currentDefTypes = new Set(["노말"]);
+
+  function initTypeButtons() {
+    const atkGrid = document.getElementById('atkTypeGrid');
+    const defGrid = document.getElementById('defTypeGrid');
+
+    Object.keys(typeColors).forEach(type => {
+      const atkBtn = document.createElement('div');
+      atkBtn.className = 'type-btn' + (type === currentAtkType ? ' active' : '');
+      atkBtn.style.backgroundColor = typeColors[type];
+      atkBtn.innerText = type;
+      atkBtn.onclick = () => {
+        currentAtkType = type;
+        document.querySelectorAll('#atkTypeGrid .type-btn').forEach(b => b.classList.remove('active'));
+        atkBtn.classList.add('active');
+        updateEffectiveness();
+      };
+      atkGrid.appendChild(atkBtn);
+
+      const defBtn = document.createElement('div');
+      defBtn.className = 'type-btn' + (currentDefTypes.has(type) ? ' active' : '');
+      defBtn.style.backgroundColor = typeColors[type];
+      defBtn.innerText = type;
+      defBtn.onclick = () => {
+        if (currentDefTypes.has(type)) {
+          currentDefTypes.delete(type);
+          defBtn.classList.remove('active');
+        } else {
+          currentDefTypes.add(type);
+          defBtn.classList.add('active');
+        }
+        updateEffectiveness();
+      };
+      defGrid.appendChild(defBtn);
+    });
+  }
+
+  function updateEffectiveness() {
+    let multiplier = 1.0;
+    if (currentDefTypes.size === 0) {
+      multiplier = 1.0;
+    } else {
+      currentDefTypes.forEach(defType => {
+        const val = typeChart[currentAtkType][defType];
+        multiplier *= (val !== undefined ? val : 1.0);
+      });
+    }
+
+    let text = `${multiplier}배 `;
+    if (multiplier > 1) text += "(효과가 굉장했다!)";
+    else if (multiplier === 0) text += "(효과가 없다...)";
+    else if (multiplier < 1) text += "(효과가 별로...)";
+    else text += "(보통)";
+
+    document.getElementById('effDisplay').innerText = text;
+    return multiplier;
+  }
+
+  function checkCriticalHit(rank) {
+    let chance = 0;
+    if (rank == 0) chance = 0.0625;
+    else if (rank == 1) chance = 0.125;
+    else if (rank == 2) chance = 0.5;
+    else chance = 1.0;
+    return Math.random() < chance;
+  }
+
+  function rollDamage() {
+    const force = parseFloat(document.getElementById('force').value) || 0;
+    const power = parseFloat(document.getElementById('power').value) || 0;
+    let atkRank = parseInt(document.getElementById('atkRank').value) || 0;
+    let defRank = parseInt(document.getElementById('defRank').value) || 0;
+    const stab = parseFloat(document.getElementById('stab').value) || 1;
+    const critRank = parseInt(document.getElementById('critRank').value) || 0;
+    
+    const divider = parseFloat(document.getElementById('divider').value) || 15;
+    const randMin = parseInt(document.getElementById('randMin').value) || 0;
+    const randMax = parseInt(document.getElementById('randMax').value) || 0;
+
+    const extra1 = parseFloat(document.getElementById('extra1').value) || 1;
+    const extra2 = parseFloat(document.getElementById('extra2').value) || 1;
+    const extra3 = parseFloat(document.getElementById('extra3').value) || 1;
+    const totalExtraMulti = extra1 * extra2 * extra3;
+
+    // 현재 모드에 따라 상성 배율 가져오기
+    const calcMode = document.getElementById('calcMode').value;
+    let typeMatch = 1.0;
+    let typeLogText = "";
+
+    if (calcMode === 'auto') {
+      typeMatch = updateEffectiveness();
+      typeLogText = `상성(${typeMatch}배)`;
+    } else {
+      typeMatch = parseFloat(document.getElementById('manualMultiplier').value) || 0;
+      typeLogText = `상성 직접입력(${typeMatch}배)`;
+    }
+    
+    // 무효(0배) 처리 로직
+    if (typeMatch === 0) {
+      document.getElementById('critDisplay').style.display = 'none';
+      document.getElementById('finalDamageDisplay').innerText = '0';
+      const failMsg = calcMode === 'auto' ? `[${currentAtkType}] 타입 기술은 효과가 없습니다.` : "상성 배율이 0이므로 효과가 없습니다.";
+      document.getElementById('logDisplay').innerText = failMsg;
+      return;
+    }
+
+    const isCrit = checkCriticalHit(critRank);
+    
+    if (isCrit) {
+      if (atkRank < 0) atkRank = 0;
+      if (defRank > 0) defRank = 0;
+    }
+
+    const rankDiff = atkRank - defRank;
+    let rankMulti = 1.0;
+    if (rankDiff >= 0) rankMulti = (2 + rankDiff) / 2;
+    else rankMulti = 2 / (2 + Math.abs(rankDiff));
+
+    const randomRoll = Math.floor(Math.random() * (randMax - randMin + 1)) + randMin;
+
+    const baseValue = (force * power) / divider;
+    
+    let finalMultipliers = rankMulti * typeMatch * stab * totalExtraMulti;
+    if (isCrit) finalMultipliers *= 1.5;
+
+    let finalDamage = (baseValue + randomRoll) * finalMultipliers;
+    finalDamage = Math.floor(finalDamage);
+
+    let extraLogText = "";
+    if (totalExtraMulti !== 1) {
+      extraLogText = ` × 기타(${totalExtraMulti.toFixed(2)}배)`;
+    }
+
+    document.getElementById('critDisplay').style.display = isCrit ? 'block' : 'none';
+    document.getElementById('finalDamageDisplay').innerText = finalDamage;
+    
+    document.getElementById('logDisplay').innerHTML = `
+      • 주사위: <strong>+${randomRoll}</strong> (${randMin}~${randMax}) | 
+      • 배율 적용: ${typeLogText} × 자속(${stab}배) × 랭크(${rankMulti.toFixed(2)}배)${isCrit ? ' × 급소(1.5배)' : ''}${extraLogText}<br>
+      • 연산식: (기본값 ${baseValue.toFixed(2)} + 주사위 ${randomRoll}) × 최종 배율 ${finalMultipliers.toFixed(2)} = ${finalDamage}
+    `;
+  }
+
+  initTypeButtons();
+  updateEffectiveness();
+</script>
+
+</body>
+</html>
