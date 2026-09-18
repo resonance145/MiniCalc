@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<title>미니 대미지 계산기</title>
+<title>미니 계산기</title>
 <style>
   body { font-family: 'Malgun Gothic', sans-serif; background-color: #f4f6f9; color: #333; padding: 10px; font-size: 14px; }
   .container { max-width: 900px; margin: 0 auto; }
@@ -86,7 +86,7 @@
       <div class="type-grid" id="defTypeGrid"></div>
 
       <div class="effectiveness-box">
-        기술 상성 배율: <span id="effDisplay">1.0배 (보통)</span>
+        기술 상성 배율: <span id="effDisplay">1.0배 (타입 미선택)</span>
       </div>
     </div>
 
@@ -219,28 +219,38 @@
     "강철": "#B8B8D0", "페어리": "#EE99AC"
   };
 
-  let currentAtkType = "노말";
-  let currentDefTypes = new Set(["노말"]);
+  // 초기 상태: 선택된 타입 없음
+  let currentAtkType = null;
+  let currentDefTypes = new Set();
 
   function initTypeButtons() {
     const atkGrid = document.getElementById('atkTypeGrid');
     const defGrid = document.getElementById('defTypeGrid');
 
     Object.keys(typeColors).forEach(type => {
+      // 공격 버튼 (단일 선택 + 토글 해제 가능)
       const atkBtn = document.createElement('div');
-      atkBtn.className = 'type-btn' + (type === currentAtkType ? ' active' : '');
+      atkBtn.className = 'type-btn';
       atkBtn.style.backgroundColor = typeColors[type];
       atkBtn.innerText = type;
       atkBtn.onclick = () => {
-        currentAtkType = type;
-        document.querySelectorAll('#atkTypeGrid .type-btn').forEach(b => b.classList.remove('active'));
-        atkBtn.classList.add('active');
+        if (currentAtkType === type) {
+          // 이미 선택된 버튼을 누르면 해제
+          currentAtkType = null;
+          atkBtn.classList.remove('active');
+        } else {
+          // 새 버튼 선택
+          currentAtkType = type;
+          document.querySelectorAll('#atkTypeGrid .type-btn').forEach(b => b.classList.remove('active'));
+          atkBtn.classList.add('active');
+        }
         updateEffectiveness();
       };
       atkGrid.appendChild(atkBtn);
 
+      // 방어 버튼 (다중 선택 토글)
       const defBtn = document.createElement('div');
-      defBtn.className = 'type-btn' + (currentDefTypes.has(type) ? ' active' : '');
+      defBtn.className = 'type-btn';
       defBtn.style.backgroundColor = typeColors[type];
       defBtn.innerText = type;
       defBtn.onclick = () => {
@@ -259,7 +269,9 @@
 
   function updateEffectiveness() {
     let multiplier = 1.0;
-    if (currentDefTypes.size === 0) {
+    
+    // 공격이나 방어 타입이 선택되지 않았다면 기본 배율 1배 적용
+    if (!currentAtkType || currentDefTypes.size === 0) {
       multiplier = 1.0;
     } else {
       currentDefTypes.forEach(defType => {
@@ -269,7 +281,9 @@
     }
 
     let text = `${multiplier}배 `;
-    if (multiplier > 1) text += "(효과가 굉장했다!)";
+    if (!currentAtkType) text = "1.0배 (공격 타입 미선택)";
+    else if (currentDefTypes.size === 0) text = "1.0배 (방어 타입 미선택)";
+    else if (multiplier > 1) text += "(효과가 굉장했다!)";
     else if (multiplier === 0) text += "(효과가 없다...)";
     else if (multiplier < 1) text += "(효과가 별로...)";
     else text += "(보통)";
@@ -312,6 +326,8 @@
     if (calcMode === 'auto') {
       typeMatch = updateEffectiveness();
       typeLogText = `상성(${typeMatch}배)`;
+      // 공격 타입이 없을 때 안내 텍스트 출력
+      if (!currentAtkType && typeMatch === 1) typeLogText = `상성(기본 1배)`;
     } else {
       typeMatch = parseFloat(document.getElementById('manualMultiplier').value) || 0;
       typeLogText = `상성 직접입력(${typeMatch}배)`;
@@ -321,7 +337,8 @@
     if (typeMatch === 0) {
       document.getElementById('critDisplay').style.display = 'none';
       document.getElementById('finalDamageDisplay').innerText = '0';
-      const failMsg = calcMode === 'auto' ? `[${currentAtkType}] 타입 기술은 효과가 없습니다.` : "상성 배율이 0이므로 효과가 없습니다.";
+      const atkTypeStr = currentAtkType ? `[${currentAtkType}] ` : "";
+      const failMsg = calcMode === 'auto' ? `${atkTypeStr}타입 기술은 효과가 없습니다.` : "상성 배율이 0이므로 효과가 없습니다.";
       document.getElementById('logDisplay').innerText = failMsg;
       return;
     }
