@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<title>팬메이드 포켓몬 대미지 계산기 (버튼 시인성 수정)</title>
+<title>팬메이드 포켓몬 대미지 계산기 (좌우 분할 레이아웃)</title>
 <style>
   body { font-family: 'Malgun Gothic', sans-serif; background-color: #f4f6f9; color: #333; padding: 10px; font-size: 14px; }
   .container { max-width: 900px; margin: 0 auto; }
@@ -20,24 +20,25 @@
   input, select { padding: 6px 8px; border: 1px solid #ccd1d9; border-radius: 4px; font-size: 0.95em; }
   input:focus, select:focus { outline: none; border-color: #3498db; }
   
-  .type-grid { display: grid; grid-template-columns: repeat(9, 1fr); gap: 4px; margin-bottom: 10px; }
+  /* 좌우 분할 레이아웃 */
+  .type-split-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px; }
   
-  /* 버튼 CSS 전면 수정: 비활성화 상태에서도 눈에 잘 띄게 변경 */
+  /* 6칸 3줄 18타입 딱 맞춤 (가로폭 50% 축소) */
+  .type-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+  
   .type-btn {
-    padding: 6px 2px; border: 2px solid transparent; border-radius: 4px; 
-    color: white; font-weight: bold; cursor: pointer; font-size: 0.85em;
+    padding: 6px 0; border: 2px solid transparent; border-radius: 4px; 
+    color: white; font-weight: bold; cursor: pointer; font-size: 0.8em;
     text-align: center; text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
     transition: all 0.2s ease;
-    opacity: 0.6; /* 투명도를 높여서 배경에 묻히지 않게 함 */
-    filter: grayscale(40%); /* 채도를 살짝 빼서 비활성화 느낌을 줌 */
+    opacity: 0.6; filter: grayscale(40%);
   }
   .type-btn.active { 
-    opacity: 1; 
-    filter: grayscale(0%);
+    opacity: 1; filter: grayscale(0%);
     border: 2px solid #222; transform: scale(1.05); z-index: 1; 
   }
   
-  .type-label-wrapper { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 3px; }
+  .type-label-wrapper { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 5px; border-bottom: 1px solid #eee; padding-bottom: 3px; }
   
   .effectiveness-box {
     background: #34495e; color: white; padding: 8px 15px; border-radius: 6px;
@@ -75,15 +76,22 @@
     </div>
     
     <div id="autoModeSection">
-      <div class="type-label-wrapper">
-        <label>⚔️ 공격 기술 타입 (1개 선택)</label>
+      <!-- 좌우 분할 컨테이너 -->
+      <div class="type-split-layout">
+        <div>
+          <div class="type-label-wrapper">
+            <label>⚔️ 공격 기술 (1개 선택)</label>
+          </div>
+          <div class="type-grid" id="atkTypeGrid"></div>
+        </div>
+        
+        <div>
+          <div class="type-label-wrapper">
+            <label>🛡️ 피격 포켓몬 (다중 토글)</label>
+          </div>
+          <div class="type-grid" id="defTypeGrid"></div>
+        </div>
       </div>
-      <div class="type-grid" id="atkTypeGrid"></div>
-      
-      <div class="type-label-wrapper" style="margin-top: 5px;">
-        <label>🛡️ 방어 포켓몬 타입 (토글형 다중 선택)</label>
-      </div>
-      <div class="type-grid" id="defTypeGrid"></div>
 
       <div class="effectiveness-box">
         기술 상성 배율: <span id="effDisplay">1.0배 (타입 미선택)</span>
