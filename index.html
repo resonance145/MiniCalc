@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<title>팬메이드 포켓몬 대미지 계산기 (초기화 버튼 추가)</title>
+<title>팬메이드 포켓몬 대미지 계산기 (급소 수정 & 초기화 버튼 개선)</title>
 <style>
   body { font-family: 'Malgun Gothic', sans-serif; background-color: #f4f6f9; color: #333; padding: 10px; font-size: 14px; }
   .container { max-width: 900px; margin: 0 auto; }
@@ -13,14 +13,14 @@
   .card-header h2 { margin: 0; font-size: 1.1em; color: #2c3e50; border: none; padding: 0; }
   .mode-select { padding: 4px 8px; font-size: 0.9em; border-radius: 4px; border: 1px solid #3498db; background-color: #e8f4f8; font-weight: bold; color: #2980b9; cursor: pointer; }
   
-  /* 초기화 네모 버튼 CSS */
+  /* 초기화 버튼 텍스트형으로 명확하게 수정 */
   .reset-btn {
-    background-color: #ecf0f1; border: 1px solid #bdc3c7; color: #7f8c8d;
-    width: 28px; height: 28px; border-radius: 4px; cursor: pointer; 
-    display: flex; justify-content: center; align-items: center; font-size: 1em;
-    transition: all 0.2s; padding: 0;
+    background-color: #f8f9fa; border: 1px solid #ced4da; color: #495057;
+    padding: 5px 12px; border-radius: 4px; cursor: pointer; 
+    font-size: 0.85em; font-weight: bold; display: flex; align-items: center; gap: 4px;
+    transition: all 0.2s; white-space: nowrap;
   }
-  .reset-btn:hover { background-color: #bdc3c7; color: white; border-color: #95a5a6; }
+  .reset-btn:hover { background-color: #e9ecef; color: #212529; border-color: #adb5bd; }
   
   .grid-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 10px; }
   .input-group { display: flex; flex-direction: column; }
@@ -80,8 +80,7 @@
           <option value="manual">상성 배율 직접 입력</option>
         </select>
       </div>
-      <!-- 상성 설정 초기화 버튼 -->
-      <button class="reset-btn" onclick="resetTypeSettings()" title="상성 설정 초기화">🔄</button>
+      <button class="reset-btn" onclick="resetTypeSettings()">🔄 초기화</button>
     </div>
     
     <div id="autoModeSection">
@@ -118,8 +117,7 @@
   <div class="card">
     <div class="card-header">
       <h2>⚔️ 포켓몬 스탯 & 배율 설정</h2>
-      <!-- 스탯 설정 초기화 버튼 -->
-      <button class="reset-btn" onclick="resetStatSettings()" title="스탯 설정 초기화">🔄</button>
+      <button class="reset-btn" onclick="resetStatSettings()">🔄 초기화</button>
     </div>
     
     <div class="grid-row">
@@ -141,7 +139,7 @@
       <div class="input-group">
         <label>급소 랭크</label>
         <select id="critRank">
-          <option value="0">0 (6.25%)</option>
+          <option value="0">0 (4.17%)</option>
           <option value="1">1 (12.5%)</option>
           <option value="2">2 (50%)</option>
           <option value="3">3+ (100%)</option>
@@ -209,7 +207,6 @@
     }
   }
 
-  // 상성 영역 초기화 함수
   function resetTypeSettings() {
     document.getElementById('calcMode').value = 'auto';
     toggleCalcMode();
@@ -222,7 +219,6 @@
     updateEffectiveness();
   }
 
-  // 스탯 영역 초기화 함수
   function resetStatSettings() {
     document.getElementById('force').value = '5';
     document.getElementById('power').value = '80';
@@ -334,12 +330,13 @@
     return multiplier;
   }
 
+  // 급소율 수치 정확하게 수정 완료
   function checkCriticalHit(rank) {
     let chance = 0;
-    if (rank == 0) chance = 0.0625;
-    else if (rank == 1) chance = 0.125;
-    else if (rank == 2) chance = 0.5;
-    else chance = 1.0;
+    if (rank == 0) chance = 1 / 24;      // 약 4.17%
+    else if (rank == 1) chance = 1 / 8;  // 12.5%
+    else if (rank == 2) chance = 1 / 2;  // 50%
+    else chance = 1.0;                   // 100%
     return Math.random() < chance;
   }
 
